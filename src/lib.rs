@@ -60,8 +60,25 @@ impl MptStore {
         }
     }
 
-    pub fn trie_restore<'a>(&self, backend_key: &'a [u8], root: TrieRoot) -> Result<MptOnce<'a>> {
-        let backend = self.get_backend(backend_key).c(d!("backend not found"))?;
+    /// @param cache_size:
+    ///     - None, do nothing
+    ///     - Some(negative value), close cache
+    ///     - Some(0), reset the cache capacity to the default size
+    ///     - Some(new_size), reset the cache capacity to the new size
+    pub fn trie_restore<'a>(
+        &self,
+        backend_key: &'a [u8],
+        cache_size: Option<isize>,
+        root: TrieRoot,
+    ) -> Result<MptOnce<'a>> {
+        let mut backend = self.get_backend(backend_key).c(d!("backend not found"))?;
+        if let Some(n) = cache_size {
+            if 0 > n {
+                backend.reset_cache(None);
+            } else {
+                backend.reset_cache(Some(n as usize));
+            }
+        }
 
         let backend = Box::into_raw(Box::new(backend));
         unsafe {
