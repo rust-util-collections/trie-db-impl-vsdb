@@ -1,7 +1,7 @@
 all: fmt lint test
 
 fmt:
-	cargo +nightly fmt
+	cargo fmt
 
 lint:
 	cargo clippy --workspace
