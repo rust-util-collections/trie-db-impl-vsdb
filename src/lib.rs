@@ -6,6 +6,7 @@ use backend::{
     KeccakHasher as H, TrieBackend,
 };
 use ruc::*;
+use serde::{Deserialize, Serialize};
 use sp_trie::{
     cache::{LocalTrieCache, TrieCache},
     trie_types::{TrieDB, TrieDBMutBuilderV1 as TrieDBMutBuilder, TrieDBMutV1 as TrieDBMut},
@@ -21,7 +22,7 @@ pub type TrieIter<'a> = Box<dyn TrieIterator<L, Item = TrieItem<TrieHash<L>, CEr
 pub type TrieKeyIter<'a> =
     Box<dyn TrieIterator<L, Item = TrieKeyItem<TrieHash<L>, CError<L>>> + 'a>;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct MptStore {
     // backend key ==> backend instance
     //
