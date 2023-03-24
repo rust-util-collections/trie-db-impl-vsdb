@@ -53,12 +53,13 @@ impl MptStore {
         self.put_backend(backend_key, &backend, reset).c(d!())?;
 
         let backend = Box::into_raw(Box::new(backend));
-        unsafe {
-            Ok(MptOnce {
-                mpt: MptMut::new(&mut *backend),
-                backend: Box::from_raw(backend),
-            })
-        }
+        let mut mpt = MptMut::new(unsafe { &mut *backend });
+        let root = mpt.commit();
+        Ok(MptOnce {
+            mpt,
+            root,
+            backend: unsafe { Box::from_raw(backend) },
+        })
     }
 
     /// @param cache_size:
@@ -82,12 +83,12 @@ impl MptStore {
         }
 
         let backend = Box::into_raw(Box::new(backend));
-        unsafe {
-            Ok(MptOnce {
-                mpt: MptMut::from_existing(&mut *backend, root),
-                backend: Box::from_raw(backend),
-            })
-        }
+        let mpt = MptMut::from_existing(unsafe { &mut *backend }, root);
+        Ok(MptOnce {
+            mpt,
+            root,
+            backend: unsafe { Box::from_raw(backend) },
+        })
     }
 
     fn get_backend(&self, backend_key: &[u8]) -> Option<TrieBackend> {
@@ -125,6 +126,7 @@ impl MptStore {
 /// so that UB will not occur
 pub struct MptOnce<'a> {
     mpt: MptMut<'a>,
+    root: TrieRoot,
 
     // self-reference
     #[allow(dead_code)]
@@ -157,7 +159,12 @@ impl<'a> MptOnce<'a> {
     }
 
     pub fn commit(&mut self) -> TrieRoot {
-        self.mpt.commit()
+        self.root = self.mpt.commit();
+        self.root
+    }
+
+    pub fn root(&self) -> TrieRoot {
+        self.root
     }
 
     pub fn ro_handle(&self, root: TrieHash<L>) -> MptRo {
