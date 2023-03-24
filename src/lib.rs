@@ -1,7 +1,10 @@
 #![deny(warnings)]
 #![allow(clippy::new_without_default)]
 
-use backend::{KeccakHasher as H, TrieBackend};
+use backend::{
+    sp_trie_db::{CError, TrieItem, TrieIterator, TrieKeyItem},
+    KeccakHasher as H, TrieBackend,
+};
 use ruc::*;
 use sp_trie::{
     cache::{LocalTrieCache, TrieCache},
@@ -11,7 +14,12 @@ use sp_trie::{
 use std::mem;
 use vsdb::basic::mapx_ord_rawkey::MapxOrdRawKey;
 
-pub type TrieRoot = TrieHash<LayoutV1<H>>;
+type L = LayoutV1<H>;
+pub type TrieRoot = TrieHash<L>;
+
+pub type TrieIter<'a> = Box<dyn TrieIterator<L, Item = TrieItem<TrieHash<L>, CError<L>>> + 'a>;
+pub type TrieKeyIter<'a> =
+    Box<dyn TrieIterator<L, Item = TrieKeyItem<TrieHash<L>, CError<L>>> + 'a>;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct MptStore {
@@ -125,6 +133,10 @@ impl<'a> MptOnce<'a> {
     pub fn commit(&mut self) -> TrieRoot {
         self.mpt.commit()
     }
+
+    pub fn ro_handle(&self, root: TrieHash<L>) -> MptRo {
+        MptRo::from_existing(&self.backend, root)
+    }
 }
 
 ///
@@ -237,6 +249,14 @@ impl<'a> MptRo<'a> {
         self.trie.contains(key).c(d!())
     }
 
+    pub fn iter(&self) -> TrieIter<'_> {
+        pnk!(self.trie.iter())
+    }
+
+    pub fn key_iter(&self) -> TrieKeyIter<'_> {
+        pnk!(self.trie.key_iter())
+    }
+
     pub fn root(&mut self) -> TrieRoot {
         *self.trie.root()
     }
@@ -296,6 +316,73 @@ impl<'a> LayeredCache<'a> {
         Self {
             cache,
             local_cache: lc,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::collections::BTreeMap;
+
+    #[test]
+    fn iter() {
+        run(None);
+    }
+
+    #[test]
+    fn iter_with_cache() {
+        run(Some(1024))
+    }
+
+    fn run(cache_size: Option<usize>) {
+        let s = MptStore::new();
+        let mut hdr = pnk!(s.trie_create(b"backend_key", cache_size, false));
+
+        {
+            let samples = (0u8..200).map(|i| ([i], [i])).collect::<Vec<_>>();
+            samples.iter().for_each(|(k, v)| {
+                pnk!(hdr.insert(k, v));
+            });
+
+            let root = hdr.commit();
+
+            let ro_hdr = hdr.ro_handle(root);
+            let bt = ro_hdr
+                .iter()
+                .map(|i| i.unwrap())
+                .collect::<BTreeMap<_, _>>();
+
+            bt.iter().enumerate().for_each(|(i, (k, v))| {
+                assert_eq!(&[i as u8], k.as_slice());
+                assert_eq!(k, v);
+            });
+
+            let keylist = ro_hdr.key_iter().map(|i| i.unwrap()).collect::<Vec<_>>();
+            assert_eq!(keylist, bt.keys().cloned().collect::<Vec<_>>());
+        }
+
+        {
+            let samples = (0u8..200).map(|i| ([i], [i + 1])).collect::<Vec<_>>();
+            samples.iter().for_each(|(k, v)| {
+                pnk!(hdr.insert(k, v));
+            });
+
+            let root = hdr.commit();
+
+            let ro_hdr = hdr.ro_handle(root);
+            let bt = ro_hdr
+                .iter()
+                .map(|i| i.unwrap())
+                .collect::<BTreeMap<_, _>>();
+
+            bt.iter().enumerate().for_each(|(i, (k, v))| {
+                assert_eq!(&[i as u8], k.as_slice());
+                assert_eq!(&[k[0] + 1], v.as_slice());
+            });
+
+            let keylist = ro_hdr.key_iter().map(|i| i.unwrap()).collect::<Vec<_>>();
+            assert_eq!(keylist, bt.keys().cloned().collect::<Vec<_>>());
         }
     }
 }
