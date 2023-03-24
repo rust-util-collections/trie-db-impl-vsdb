@@ -13,7 +13,7 @@ use vsdb::basic::mapx_ord_rawkey::MapxOrdRawKey;
 
 pub type TrieRoot = TrieHash<LayoutV1<H>>;
 
-#[cfg_attr(feature = "serde_derive", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct MptStore {
     // backend key ==> backend instance
     //

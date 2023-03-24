@@ -5,9 +5,7 @@ fmt:
 
 lint:
 	cargo clippy --workspace
-	cargo clippy --workspace --features="serde_derive"
 	cargo clippy --workspace --tests
-	cargo clippy --workspace --tests --features="serde_derive"
 	@ # cargo clippy --workspace --examples
 	@ # cargo clippy --workspace --features="benchmark"
 
@@ -18,7 +16,6 @@ musl_lint:
 
 test:
 	cargo test --workspace -- --nocapture
-	cargo test --workspace --features="serde_derive" -- --nocapture
 
 update:
 	rustup update stable
