@@ -1,6 +1,6 @@
 [package]
 name = "trie_db_impl_vsdb"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 keywords = ["mpt", "trie", "database", "blockchain"]
 license = "MIT"

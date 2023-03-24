@@ -2,7 +2,7 @@
 #![allow(clippy::new_without_default)]
 
 use backend::{
-    sp_trie_db::{CError, TrieItem, TrieIterator, TrieKeyItem},
+    sp_trie_db::{CError, DBValue, HashDB, TrieItem, TrieIterator, TrieKeyItem},
     KeccakHasher as H, TrieBackend,
 };
 use ruc::*;
@@ -130,6 +130,14 @@ impl<'a> MptOnce<'a> {
         self.mpt.remove(key).c(d!()).map(|_| ())
     }
 
+    pub fn clear(&mut self) -> Result<()> {
+        self.mpt.clear().c(d!())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.mpt.is_empty()
+    }
+
     pub fn commit(&mut self) -> TrieRoot {
         self.mpt.commit()
     }
@@ -206,8 +214,25 @@ impl<'a> MptMut<'a> {
         self.trie.remove(key).c(d!()).map(|_| ())
     }
 
+    pub fn clear(&mut self) -> Result<()> {
+        let root = self.commit();
+        let keys = self.ro_handle(root).key_iter().collect::<Vec<_>>();
+        for k in keys.iter().map(|k| k.as_ref().unwrap()) {
+            self.remove(k).c(d!())?;
+        }
+        Ok(())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.trie.is_empty()
+    }
+
     pub fn commit(&mut self) -> TrieRoot {
         *self.trie.root()
+    }
+
+    pub fn ro_handle(&self, root: TrieHash<L>) -> MptRo {
+        MptRo::from_existing_dyn(self.trie.db(), root)
     }
 }
 
@@ -239,6 +264,13 @@ impl<'a> MptRo<'a> {
             .build();
 
         Self { trie, meta }
+    }
+
+    pub fn from_existing_dyn(backend: &dyn HashDB<H, DBValue>, root: TrieRoot) -> Self {
+        let backend = &backend as *const &dyn HashDB<H, DBValue>;
+        let backend = backend.cast::<&TrieBackend>();
+        let backend = unsafe { *backend };
+        MptRo::from_existing(backend, root)
     }
 
     pub fn get(&self, key: &[u8]) -> Result<Option<Vec<u8>>> {
@@ -384,5 +416,9 @@ mod test {
             let keylist = ro_hdr.key_iter().map(|i| i.unwrap()).collect::<Vec<_>>();
             assert_eq!(keylist, bt.keys().cloned().collect::<Vec<_>>());
         }
+
+        assert!(!hdr.is_empty());
+        hdr.clear().unwrap();
+        assert!(hdr.is_empty());
     }
 }
