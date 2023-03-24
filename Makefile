@@ -1,4 +1,4 @@
-all: fmt lint
+all: fmt lint test
 
 fmt:
 	cargo +nightly fmt
@@ -15,6 +15,7 @@ musl_lint:
 	fi
 
 test:
+	rm -rf ~/.vsdb
 	cargo test --workspace -- --nocapture
 
 update:
