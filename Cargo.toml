@@ -1,0 +1,21 @@
+[package]
+name = "trie_db_impl_vsdb"
+version = "0.1.0"
+edition = "2021"
+keywords = ["mpt", "trie", "database", "blockchain"]
+license = "MIT"
+authors = ["hui.fan@mail.ru"]
+description = "An out-of-box wraper of the `trie_db` crate"
+homepage = "https://github.com/rust-util-collections/trie-db-impl-vsdb"
+repository = "https://github.com/rust-util-collections/trie-db-impl-vsdb"
+
+[dependencies]
+ruc = "4.1.0"
+vsdb = "0.51.1"
+backend = { package = "hash-db-impl-vsdb", version = "0.1.1" }
+
+sp-trie = "19.0"
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[features]
+serde_derive = ["serde"]
