@@ -3,6 +3,7 @@
 
 use backend::{
     sp_trie_db::{CError, DBValue, HashDB, TrieItem, TrieIterator, TrieKeyItem},
+    vsdb::basic::mapx_ord_rawkey::MapxOrdRawKey,
     KeccakHasher as H, TrieBackend,
 };
 use ruc::*;
@@ -13,7 +14,6 @@ use sp_trie::{
     LayoutV1, Trie, TrieDBBuilder, TrieHash, TrieMut,
 };
 use std::mem;
-use vsdb::basic::mapx_ord_rawkey::MapxOrdRawKey;
 
 type L = LayoutV1<H>;
 pub type TrieRoot = TrieHash<L>;
